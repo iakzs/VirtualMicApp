@@ -52,7 +52,7 @@ jobs:
     - name: Upload Zip as Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: Build Output
+        name: BO
         path: VirtualMicApp-${{ matrix.configuration }}.zip
 
   recreate_release:
@@ -106,7 +106,7 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
-          name: Build Output
+          name: BO
 
       - name: Release
         uses: softprops/action-gh-release@v1
