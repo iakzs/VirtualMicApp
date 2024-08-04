@@ -1,1 +1,1 @@
-[**Virtual Mic App**](https://github.com/iakzs/virtual-mic-app/) © 2024 by [*koslz*](https://github.com/iakzs)  is licensed under [Creative Commons Attribution-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/).
+[**Virtual Mic App**](https://github.com/iakzs/VirtualMicApp/) © 2024 by [*koslz*](https://github.com/iakzs)  is licensed under [Creative Commons Attribution-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/).
