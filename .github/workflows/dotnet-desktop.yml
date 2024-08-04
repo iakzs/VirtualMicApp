@@ -15,7 +15,7 @@ jobs:
   build:
     strategy:
       matrix:
-        configuration: [Debug, Release]
+        configuration: [ Release ]
 
     runs-on: ubuntu-latest
 
@@ -41,12 +41,12 @@ jobs:
     - name: Zip everything built
       uses: TonyBogdanov/zip@1.0
       with:
-          args: zip -qq -r ./VirtualMicApp-${{ matrix.configuration }}.zip ${{ env.Output_Directory }}
+          args: zip -qq -r ./VirtualMicApp.zip ${{ env.Output_Directory }}
 
     - name: Upload Zip as Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: Build Output
+        name: BO
         path: VirtualMicApp.zip
 
   recreate_release:
@@ -100,7 +100,7 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
-          name: Build Output
+          name: BO
 
       - name: Release
         uses: softprops/action-gh-release@v1
