@@ -2,7 +2,8 @@ name: .NET Core Desktop
 
 on:
   push:
-    branches: [ "main" ]
+    tags:
+      - '*'  # This will trigger the workflow on tag creation.
   pull_request:
     branches: [ "main" ]
 
@@ -16,9 +17,8 @@ jobs:
 
     env:
       Solution_Name: VirtualMicApp.sln
-      Test_Project_Path: VirtualMicApp.Tests\VirtualMicApp.csproj
-      Wap_Project_Directory: VirtualMicApp
-      Wap_Project_Path: VirtualMicApp
+      Project_Path: VirtualMicApp/VirtualMicApp.csproj
+      Output_Directory: VirtualMicApp/bin/${{ matrix.configuration }}
 
     steps:
     - name: Checkout
@@ -35,34 +35,55 @@ jobs:
       uses: microsoft/setup-msbuild@v2
 
     - name: Execute unit tests
-      run: dotnet test
+      run: dotnet test ${{ env.Test_Project_Path }}
 
-    - name: Restore the application
-      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
+    - name: Build the project
+      run: dotnet build ${{ env.Project_Path }} --configuration ${{ matrix.configuration }}
 
-    - name: Decode the pfx
+    - name: Archive build output
       run: |
-        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.Base64_Encoded_Pfx }}")
-        $certificatePath = Join-Path -Path $env:Wap_Project_Directory -ChildPath GitHubActionsWorkflow.pfx
-        [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+        cd $env:Output_Directory
+        Compress-Archive -Path * -DestinationPath ../VirtualMicApp-${{ matrix.configuration }}.zip
       shell: pwsh
 
-    - name: Create the app package
-      run: msbuild $env:Wap_Project_Path /p:Configuration=$env:Configuration /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile=GitHubActionsWorkflow.pfx /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
-      env:
-        Appx_Bundle: Always
-        Appx_Bundle_Platforms: x86|x64
-        Appx_Package_Build_Mode: StoreUpload
-        Configuration: ${{ matrix.configuration }}
-
-    - name: Remove the pfx
-      run: Remove-Item -path $env:Wap_Project_Directory\GitHubActionsWorkflow.pfx
-      shell: pwsh
-
-    - name: Upload build artifacts
+    - name: Upload build output as artifact
       uses: actions/upload-artifact@v3
       with:
-        name: MSIX Package
-        path: ${{ env.Wap_Project_Directory }}\AppPackages
+        name: Build Output
+        path: VirtualMicApp/bin/VirtualMicApp-${{ matrix.configuration }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: Build Output
+        path: ./
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        body: |
+          Release ${{ github.ref_name }} - Published by GitHub Actions
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Assets
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: VirtualMicApp-${{ matrix.configuration }}.zip
+        asset_name: VirtualMicApp-${{ matrix.configuration }}.zip
+        asset_content_type: application/zip
