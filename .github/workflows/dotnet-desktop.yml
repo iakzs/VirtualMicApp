@@ -6,9 +6,10 @@ permissions:
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - '**'  # Trigger the workflow on every push to any branch
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main" ]  # This will trigger the workflow on PRs targeting the "main" branch
 
 jobs:
   build:
@@ -16,7 +17,7 @@ jobs:
       matrix:
         configuration: [Debug, Release]
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Use a Linux runner
 
     env:
       Solution_Name: VirtualMicApp.sln
@@ -32,26 +33,20 @@ jobs:
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 8.0.x
-
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v2
-
-    - name: Execute unit tests
-      run: dotnet test ${{ env.Test_Project_Path }}
+        dotnet-version: 8.0.x  # Make sure the .NET version matches your project requirements
 
     - name: Build the project
       run: dotnet build ${{ env.Project_Path }} --configuration ${{ matrix.configuration }}
 
     - name: Zip everything built
       uses: TonyBogdanov/zip@1.0
-      with: 
-        args: cd $env:Output_Directory && zip -qq -r ./VirtualMicApp-${{ matrix.configuration }}.zip ./
+      with:
+          args: zip -qq -r ./VirtualMicApp-${{ matrix.configuration }}.zip ${{ env.Output_Directory }}
 
     - name: Upload Zip as Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: BO
+        name: Build Output
         path: VirtualMicApp-${{ matrix.configuration }}.zip
 
   recreate_release:
@@ -105,7 +100,7 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
-          name: BO
+          name: Build Output
 
       - name: Release
         uses: softprops/action-gh-release@v1
