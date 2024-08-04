@@ -47,7 +47,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: Build Output
-        path: VirtualMicApp-${{ matrix.configuration }}.zip
+        path: VirtualMicApp.zip
 
   recreate_release:
     runs-on: ubuntu-latest
@@ -112,4 +112,4 @@ jobs:
             [Link to build](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             yeahhh :D
           files: |
-            VirtualMicApp-${{ matrix.configuration }}.zip
+            VirtualMicApp.zip
