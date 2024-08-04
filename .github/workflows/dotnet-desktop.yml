@@ -6,8 +6,7 @@ permissions:
 
 on:
   push:
-    tags:
-      - '*'  # This will trigger the workflow on tag creation.
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
