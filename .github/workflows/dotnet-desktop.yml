@@ -44,10 +44,9 @@ jobs:
       run: dotnet build ${{ env.Project_Path }} --configuration ${{ matrix.configuration }}
 
     - name: Zip everything built
-      run: |
-        cd $env:Output_Directory
-        Compress-Archive -Path * -DestinationPath ../VirtualMicApp-${{ matrix.configuration }}.zip
-      shell: pwsh
+      uses: TonyBogdanov/zip@1.0
+      with: 
+        args: cd $env:Output_Directory && zip -qq -r ./VirtualMicApp-${{ matrix.configuration }}.zip ./
 
     - name: Upload Zip as Artifact
       uses: actions/upload-artifact@v3
