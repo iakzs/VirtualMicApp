@@ -3,16 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Virtual Mic App | Made by koslz" Height="350" Width="525">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="386*"/>
-            <ColumnDefinition Width="24*"/>
-            <ColumnDefinition Width="115*"/>
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="73*"/>
-            <RowDefinition Height="0*"/>
-            <RowDefinition Height="94*"/>
-        </Grid.RowDefinitions>
         <ComboBox x:Name="audioSourceComboBox" HorizontalAlignment="Left" VerticalAlignment="Top" Width="200" Margin="10,10,0,0"/>
         <Button x:Name="startButton" Content="Start" HorizontalAlignment="Left" VerticalAlignment="Top" Width="100" Margin="10,50,0,0" Click="StartButton_Click"/>
         <Button x:Name="stopButton" Content="Stop" HorizontalAlignment="Left" VerticalAlignment="Top" Width="100" Margin="120,50,0,0" Click="StopButton_Click" IsEnabled="False"/>
