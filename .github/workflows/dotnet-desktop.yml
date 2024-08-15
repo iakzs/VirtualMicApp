@@ -17,12 +17,12 @@ jobs:
       matrix:
         configuration: [ Release ]
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest  # i guess i need windows
 
     env:
       Solution_Name: VirtualMicApp.sln
       Project_Path: VirtualMicApp/VirtualMicApp.csproj
-      Output_Directory: VirtualMicApp/bin/${{ matrix.configuration }}
+      Output_Directory: VirtualMicApp/bin/${{ matrix.configuration }}/publish
 
     steps:
     - name: Checkout
@@ -30,7 +30,7 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install .NET Core
+    - name: Setup .NET Core
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
@@ -38,10 +38,12 @@ jobs:
     - name: Build the project
       run: dotnet build ${{ env.Project_Path }} --configuration ${{ matrix.configuration }}
 
-    - name: Zip everything built
-      uses: TonyBogdanov/zip@1.0
-      with:
-          args: zip -qq -r ./VirtualMicApp.zip ${{ env.Output_Directory }}
+    - name: Publish the project (produce .exe)
+      run: dotnet publish ${{ env.Project_Path }} --configuration ${{ matrix.configuration }} --output ${{ env.Output_Directory }} --self-contained --runtime win-x64
+
+    - name: Zip everything built using PowerShell
+      run: |
+        Compress-Archive -Path ${{ env.Output_Directory }}\* -DestinationPath VirtualMicApp.zip
 
     - name: Upload Zip as Artifact
       uses: actions/upload-artifact@v3
