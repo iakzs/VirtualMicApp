@@ -21,11 +21,44 @@ namespace VirtualMicApp
 
         private void LoadAudioDevices()
         {
+            var enumerator = new MMDeviceEnumerator();
+            var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
+        
+            foreach (var device in devices)
+            {
+                audioSourceComboBox.Items.Add($"Mic - {device.FriendlyName}");
+            }
+
             for (int i = 0; i < WaveOut.DeviceCount; i++)
             {
                 var capabilities = WaveOut.GetCapabilities(i);
-                audioSourceComboBox.Items.Add($"{i} - {capabilities.ProductName}");
+                audioSourceComboBox.Items.Add($"Speaker - {i} - {capabilities.ProductName}");
             }
+        }
+        
+        private void StartRealMicrophone(string selectedText)
+        {
+            var micDeviceName = selectedText.Replace("Mic - ", "");
+            var enumerator = new MMDeviceEnumerator();
+            var device = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active)
+                                  .FirstOrDefault(d => d.FriendlyName == micDeviceName);
+        
+            if (device == null)
+            {
+                MessageBox.Show("Microphone not found.");
+                return;
+            }
+        
+            capture = new WasapiCapture(device);
+            capture.DataAvailable += Capture_DataAvailable;
+        
+            bufferedWaveProvider = new BufferedWaveProvider(capture.WaveFormat);
+        
+            waveOutToVirtualDevice = new WaveOutEvent();
+            waveOutToVirtualDevice.Init(bufferedWaveProvider);
+            waveOutToVirtualDevice.Play();
+        
+            capture.StartRecording();
         }
 
         private void StartButton_Click(object sender, RoutedEventArgs e)
@@ -35,37 +68,20 @@ namespace VirtualMicApp
                 MessageBox.Show("Please select an audio device.");
                 return;
             }
-
+        
             try
             {
                 var selectedText = audioSourceComboBox.SelectedItem.ToString();
-                var selectedIndex = int.Parse(selectedText.Split('-')[0].Trim());
-
-                capture = new WasapiLoopbackCapture();
-                capture.DataAvailable += Capture_DataAvailable;
-
-                bufferedWaveProvider = new BufferedWaveProvider(capture.WaveFormat);
-
-                int vbCableDeviceNumber = FindVBCableDeviceIndex();
-                waveOutToVirtualDevice = new WaveOutEvent
+        
+                if (selectedText.StartsWith("Mic -"))
                 {
-                    DeviceNumber = vbCableDeviceNumber
-                };
-                waveOutToVirtualDevice.Init(bufferedWaveProvider);
-
-                if (playbackCheckBox.IsChecked == true)
-                {
-                    waveOutToSpeakers = new WaveOutEvent
-                    {
-                        DeviceNumber = selectedIndex
-                    };
-                    waveOutToSpeakers.Init(bufferedWaveProvider);
-                    waveOutToSpeakers.Play(); 
+                    StartRealMicrophone(selectedText);
                 }
-
-                capture.StartRecording();
-                waveOutToVirtualDevice.Play();
-
+                else if (selectedText.StartsWith("Speaker -"))
+                {
+                    StartSpeakerMic(selectedText);
+                }
+        
                 startButton.IsEnabled = false;
                 stopButton.IsEnabled = true;
             }
@@ -74,6 +90,7 @@ namespace VirtualMicApp
                 MessageBox.Show($"An error occurred while starting: {ex.Message}. Please inform koslz at: @iakzs:matrix.org");
             }
         }
+
 
         private void Capture_DataAvailable(object? sender, WaveInEventArgs e)
         {
