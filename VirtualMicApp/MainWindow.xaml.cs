@@ -53,8 +53,24 @@ namespace VirtualMicApp
             capture.DataAvailable += Capture_DataAvailable;
         
             bufferedWaveProvider = new BufferedWaveProvider(capture.WaveFormat);
-        
+
             waveOutToVirtualDevice = new WaveOutEvent();
+            waveOutToVirtualDevice.Init(bufferedWaveProvider);
+            waveOutToVirtualDevice.Play();
+        
+            capture.StartRecording();
+        }
+        private void StartSpeakerMic(string selectedText)
+        {
+            var selectedIndex = int.Parse(selectedText.Split('-')[1].Trim());
+        
+            capture = new WasapiLoopbackCapture();
+            capture.DataAvailable += Capture_DataAvailable;
+        
+            bufferedWaveProvider = new BufferedWaveProvider(capture.WaveFormat);
+            
+            waveOutToVirtualDevice = new WaveOutEvent();
+            waveOutToVirtualDevice.DeviceNumber = FindVBCableDeviceIndex();
             waveOutToVirtualDevice.Init(bufferedWaveProvider);
             waveOutToVirtualDevice.Play();
         
@@ -129,8 +145,10 @@ namespace VirtualMicApp
                     return i;
                 }
             }
+
+            MessageBox.Show("VB-Audio Cable device not found.");
             return -1;
-        }
+        }        
     }
 }
 // i added output thingy because im too cool and if you got any errors, will be easier to fix later.
