@@ -45,6 +45,7 @@ namespace VirtualMicApp
                     MessageBox.Show("Please select an audio device.");
                     return;
                 }
+
                 var selectedMicName = microphoneComboBox.SelectedItem?.ToString();
 
                 var enumerator = new MMDeviceEnumerator();
@@ -120,7 +121,7 @@ namespace VirtualMicApp
             micCapture.DataAvailable += MicCapture_DataAvailable;
             micCapture.StartRecording();
         }
-        
+
         private void MicCapture_DataAvailable(object sender, WaveInEventArgs e)
         {
             micBufferedWaveProvider?.AddSamples(e.Buffer, 0, e.BytesRecorded);
