@@ -1,7 +1,7 @@
 <Window x:Class="VirtualMicApp.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Virtual Mic App | Made by koslz" Height="190" Width="233">
+        Title="Virtual Mic App | Made by koslz" Height="350" Width="525">
     <Grid>
         <ComboBox x:Name="audioSourceComboBox" 
                   HorizontalAlignment="Left" 
