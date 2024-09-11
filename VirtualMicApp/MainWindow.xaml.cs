@@ -44,45 +44,50 @@ namespace VirtualMicApp
                     MessageBox.Show("Please select an audio device.");
                     return;
                 }
-
+        
                 var selectedMicName = microphoneComboBox.SelectedItem?.ToString();
-
+        
                 var enumerator = new MMDeviceEnumerator();
                 var device = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active)
                                        .FirstOrDefault(d => d.FriendlyName == selectedDeviceName);
-
+        
                 MMDevice micDevice = null;
                 if (!string.IsNullOrEmpty(selectedMicName))
                 {
                     micDevice = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active)
                                           .FirstOrDefault(d => d.FriendlyName == selectedMicName);
                 }
-
+        
                 if (device != null)
                 {
                     capture = new WasapiLoopbackCapture(device);
                     capture.DataAvailable += Capture_DataAvailable;
-
+        
                     bufferedWaveProvider = new BufferedWaveProvider(capture.WaveFormat);
-
-                    if (playbackCheckBox.IsChecked == true)
-                    {
-                        waveOut = new WaveOutEvent
-                        {
-                            DeviceNumber = -1
-                        };
-
-                        waveOut.Init(bufferedWaveProvider);
-                        waveOut.Play();
-                    }
-
+        
                     capture.StartRecording();
-
+        
+                    waveOut = new WaveOutEvent
+                    {
+                        DeviceNumber = FindVBCableDeviceIndex()
+                    };
+        
                     if (micDevice != null)
                     {
                         StartMicrophoneCapture(micDevice);
+        
+                        var multiplexingProvider = new MultiplexingWaveProvider(
+                            new IWaveProvider[] { bufferedWaveProvider, micBufferedWaveProvider }, 2);
+                        
+                        waveOut.Init(multiplexingProvider);
                     }
-
+                    else
+                    {
+                        waveOut.Init(bufferedWaveProvider);
+                    }
+        
+                    waveOut.Play();
+        
                     startButton.IsEnabled = false;
                     stopButton.IsEnabled = true;
                 }
