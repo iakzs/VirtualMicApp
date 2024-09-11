@@ -64,7 +64,7 @@ namespace VirtualMicApp
                     capture = new WasapiLoopbackCapture(device);
                     capture.DataAvailable += Capture_DataAvailable;
 
-                    bufferedWaveProvider = new BufferedWaveProvider(capture.WaveFormat);
+                    bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(44100, 16, 2)); // Convert to 44.1 kHz, 16-bit, stereo
 
                     capture.StartRecording();
 
@@ -78,13 +78,18 @@ namespace VirtualMicApp
                         StartMicrophoneCapture(micDevice);
 
                         var multiplexingProvider = new MultiplexingWaveProvider(
-                            new IWaveProvider[] { bufferedWaveProvider, micBufferedWaveProvider }, 2);
-                        
+                            new IWaveProvider[]
+                            {
+                                new WaveFormatConversionStream(new WaveFormat(44100, 16, 2), bufferedWaveProvider),
+                                new WaveFormatConversionStream(new WaveFormat(44100, 16, 1), micBufferedWaveProvider)
+                            },
+                            2);
+
                         waveOut.Init(multiplexingProvider);
                     }
                     else
                     {
-                        waveOut.Init(bufferedWaveProvider);
+                        waveOut.Init(new WaveFormatConversionStream(new WaveFormat(44100, 16, 2), bufferedWaveProvider));
                     }
 
                     waveOut.Play();
@@ -116,7 +121,7 @@ namespace VirtualMicApp
                 WaveFormat = new WaveFormat(44100, 1)
             };
 
-            micBufferedWaveProvider = new BufferedWaveProvider(micCapture.WaveFormat);
+            micBufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(44100, 1));
 
             micCapture.DataAvailable += MicCapture_DataAvailable;
             micCapture.StartRecording();
