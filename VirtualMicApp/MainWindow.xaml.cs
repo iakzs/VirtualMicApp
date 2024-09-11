@@ -17,6 +17,7 @@ namespace VirtualMicApp
         {
             InitializeComponent();
             LoadAudioDevices();
+            LoadMicrophoneDevices();
         }
 
         private void LoadAudioDevices()
@@ -24,6 +25,13 @@ namespace VirtualMicApp
             var enumerator = new MMDeviceEnumerator();
             var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
             audioSourceComboBox.ItemsSource = devices.Select(d => d.FriendlyName).ToList();
+        }
+
+        private void LoadMicrophoneDevices()
+        {
+            var enumerator = new MMDeviceEnumerator();
+            var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
+            microphoneComboBox.ItemsSource = devices.Select(d => d.FriendlyName).ToList();
         }
 
         private void StartButton_Click(object sender, RoutedEventArgs e)
@@ -36,32 +44,45 @@ namespace VirtualMicApp
                     MessageBox.Show("Please select an audio device.");
                     return;
                 }
-        
+
+                var selectedMicName = microphoneComboBox.SelectedItem?.ToString();
+
                 var enumerator = new MMDeviceEnumerator();
                 var device = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active)
                                        .FirstOrDefault(d => d.FriendlyName == selectedDeviceName);
-        
+
+                MMDevice micDevice = null;
+                if (!string.IsNullOrEmpty(selectedMicName))
+                {
+                    micDevice = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active)
+                                          .FirstOrDefault(d => d.FriendlyName == selectedMicName);
+                }
+
                 if (device != null)
                 {
                     capture = new WasapiLoopbackCapture(device);
                     capture.DataAvailable += Capture_DataAvailable;
-        
+
                     bufferedWaveProvider = new BufferedWaveProvider(capture.WaveFormat);
-        
+
                     if (playbackCheckBox.IsChecked == true)
                     {
                         waveOut = new WaveOutEvent
                         {
-                            DeviceNumber = -1 
+                            DeviceNumber = -1
                         };
-        
+
                         waveOut.Init(bufferedWaveProvider);
                         waveOut.Play();
                     }
-        
+
                     capture.StartRecording();
-                    StartMicrophoneCapture();
-        
+
+                    if (micDevice != null)
+                    {
+                        StartMicrophoneCapture(micDevice);
+                    }
+
                     startButton.IsEnabled = false;
                     stopButton.IsEnabled = true;
                 }
@@ -76,16 +97,16 @@ namespace VirtualMicApp
             }
         }
 
-
         private void Capture_DataAvailable(object sender, WaveInEventArgs e)
         {
             bufferedWaveProvider?.AddSamples(e.Buffer, 0, e.BytesRecorded);
         }
 
-        private void StartMicrophoneCapture()
+        private void StartMicrophoneCapture(MMDevice micDevice)
         {
             micCapture = new WaveInEvent
             {
+                DeviceNumber = Array.IndexOf(new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active).ToArray(), micDevice),
                 WaveFormat = new WaveFormat(44100, 1)
             };
             micCapture.DataAvailable += MicCapture_DataAvailable;
