@@ -8,11 +8,11 @@ namespace VirtualMicApp
 {
     public partial class MainWindow : Window
     {
-        private WasapiLoopbackCapture capture;
-        private WaveInEvent micCapture;
-        private WaveOutEvent waveOut;
-        private BufferedWaveProvider bufferedWaveProvider;
-        private BufferedWaveProvider micBufferedWaveProvider;
+        private WasapiLoopbackCapture? capture;
+        private WaveInEvent? micCapture;
+        private WaveOutEvent? waveOut;
+        private BufferedWaveProvider? bufferedWaveProvider;
+        private BufferedWaveProvider? micBufferedWaveProvider;
 
         public MainWindow()
         {
@@ -52,7 +52,7 @@ namespace VirtualMicApp
                 var device = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active)
                                        .FirstOrDefault(d => d.FriendlyName == selectedDeviceName);
 
-                MMDevice micDevice = null;
+                MMDevice? micDevice = null;
                 if (!string.IsNullOrEmpty(selectedMicName))
                 {
                     micDevice = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active)
@@ -77,11 +77,14 @@ namespace VirtualMicApp
                     {
                         StartMicrophoneCapture(micDevice);
 
+                        var systemAudioStream = new WaveProviderToWaveStream(bufferedWaveProvider);
+                        var micAudioStream = new WaveProviderToWaveStream(micBufferedWaveProvider);
+
                         var multiplexingProvider = new MultiplexingWaveProvider(
                             new IWaveProvider[]
                             {
-                                new WaveFormatConversionStream(new WaveFormat(44100, 16, 2), bufferedWaveProvider),
-                                new WaveFormatConversionStream(new WaveFormat(44100, 16, 1), micBufferedWaveProvider)
+                                new WaveFormatConversionStream(new WaveFormat(44100, 16, 2), systemAudioStream),
+                                new WaveFormatConversionStream(new WaveFormat(44100, 16, 1), micAudioStream)
                             },
                             2);
 
@@ -89,7 +92,8 @@ namespace VirtualMicApp
                     }
                     else
                     {
-                        waveOut.Init(new WaveFormatConversionStream(new WaveFormat(44100, 16, 2), bufferedWaveProvider));
+                        var systemAudioStream = new WaveProviderToWaveStream(bufferedWaveProvider);
+                        waveOut.Init(new WaveFormatConversionStream(new WaveFormat(44100, 16, 2), systemAudioStream));
                     }
 
                     waveOut.Play();
@@ -108,7 +112,7 @@ namespace VirtualMicApp
             }
         }
 
-        private void Capture_DataAvailable(object sender, WaveInEventArgs e)
+        private void Capture_DataAvailable(object? sender, WaveInEventArgs e)
         {
             bufferedWaveProvider?.AddSamples(e.Buffer, 0, e.BytesRecorded);
         }
@@ -127,7 +131,7 @@ namespace VirtualMicApp
             micCapture.StartRecording();
         }
 
-        private void MicCapture_DataAvailable(object sender, WaveInEventArgs e)
+        private void MicCapture_DataAvailable(object? sender, WaveInEventArgs e)
         {
             micBufferedWaveProvider?.AddSamples(e.Buffer, 0, e.BytesRecorded);
         }
