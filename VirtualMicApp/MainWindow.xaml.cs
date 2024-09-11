@@ -64,7 +64,7 @@ namespace VirtualMicApp
                     capture = new WasapiLoopbackCapture(device);
                     capture.DataAvailable += Capture_DataAvailable;
 
-                    bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(44100, 16, 2)); // Convert to 44.1 kHz, 16-bit, stereo
+                    bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(44100, 16, 2));
 
                     capture.StartRecording();
 
@@ -77,14 +77,11 @@ namespace VirtualMicApp
                     {
                         StartMicrophoneCapture(micDevice);
 
-                        var systemAudioStream = new WaveProviderToWaveStream(bufferedWaveProvider);
-                        var micAudioStream = new WaveProviderToWaveStream(micBufferedWaveProvider);
-
                         var multiplexingProvider = new MultiplexingWaveProvider(
                             new IWaveProvider[]
                             {
-                                new WaveFormatConversionStream(new WaveFormat(44100, 16, 2), systemAudioStream),
-                                new WaveFormatConversionStream(new WaveFormat(44100, 16, 1), micAudioStream)
+                                new WaveFormatConversionProvider(new WaveFormat(44100, 16, 2), bufferedWaveProvider),
+                                new WaveFormatConversionProvider(new WaveFormat(44100, 16, 1), micBufferedWaveProvider)
                             },
                             2);
 
@@ -92,8 +89,7 @@ namespace VirtualMicApp
                     }
                     else
                     {
-                        var systemAudioStream = new WaveProviderToWaveStream(bufferedWaveProvider);
-                        waveOut.Init(new WaveFormatConversionStream(new WaveFormat(44100, 16, 2), systemAudioStream));
+                        waveOut.Init(new WaveFormatConversionProvider(new WaveFormat(44100, 16, 2), bufferedWaveProvider));
                     }
 
                     waveOut.Play();
@@ -168,4 +164,35 @@ namespace VirtualMicApp
             return -1;
         }
     }
-}
+
+    public class WaveFormatConversionProvider : WaveStream
+    {
+        private readonly IWaveProvider source;
+        private readonly WaveFormat waveFormat;
+        private readonly byte[] buffer;
+
+        public WaveFormatConversionProvider(WaveFormat waveFormat, IWaveProvider source)
+        {
+            this.waveFormat = waveFormat;
+            this.source = source;
+            buffer = new byte[waveFormat.AverageBytesPerSecond];
+        }
+
+        public override WaveFormat WaveFormat => waveFormat;
+
+        public override long Length => 0;
+
+        public override long Position
+        {
+            get => 0;
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return source.Read(buffer, offset, count);
+        }
+    }
+
+
+// help im finding docs of stuff that doesnt exist lol, im still tryin this. now i just push to here instead of testing on my pc because no storage 
