@@ -20,6 +20,7 @@ namespace VirtualMicApp
         private MixingSampleProvider? mixer;
         private float audioSourceGain = 1.0f;
         private float microphoneGain = 1.0f;
+        private readonly int desiredLatency = 100;
 
         public MainWindow()
         {
@@ -80,18 +81,31 @@ namespace VirtualMicApp
 
                 capture = new WasapiLoopbackCapture();
                 capture.DataAvailable += Capture_DataAvailable;
-                bufferedWaveProvider = new BufferedWaveProvider(capture.WaveFormat);
+
+                var waveFormat = new WaveFormat(48000, 16, 2);
+                bufferedWaveProvider = new BufferedWaveProvider(waveFormat)
+                {
+                    DiscardOnBufferOverflow = false,
+                    BufferDuration = TimeSpan.FromMilliseconds(desiredLatency * 2)
+                };
 
                 if (enableMicrophoneCheckBox.IsChecked == true && microphoneComboBox.SelectedItem != null)
                 {
                     var micSelectedText = microphoneComboBox.SelectedItem.ToString();
                     var micSelectedIndex = int.Parse(micSelectedText.Split('-')[0].Trim());
                     
-                    microphoneInput = new WaveIn();
-                    microphoneInput.DeviceNumber = micSelectedIndex;
-                    microphoneInput.WaveFormat = capture.WaveFormat;
+                    microphoneInput = new WaveIn
+                    {
+                        DeviceNumber = micSelectedIndex,
+                        WaveFormat = waveFormat,
+                        BufferMilliseconds = desiredLatency
+                    };
                     microphoneInput.DataAvailable += Microphone_DataAvailable;
-                    microphoneBuffer = new BufferedWaveProvider(capture.WaveFormat);
+                    microphoneBuffer = new BufferedWaveProvider(waveFormat)
+                    {
+                        DiscardOnBufferOverflow = false,
+                        BufferDuration = TimeSpan.FromMilliseconds(desiredLatency * 2)
+                    };
                 }
 
                 var sources = new List<ISampleProvider>();
@@ -113,13 +127,20 @@ namespace VirtualMicApp
 
                 if (sources.Count > 0)
                 {
-                    mixer = new MixingSampleProvider(sources);
+                    mixer = new MixingSampleProvider(sources)
+                    {
+                        ReadFully = true
+                    };
                     var finalOutput = ApplyEffects(mixer);
 
                     int vbCableDeviceNumber = FindVBCableDeviceIndex();
                     if (vbCableDeviceNumber != -1)
                     {
-                        waveOutToVirtualDevice = new WaveOutEvent() { DeviceNumber = vbCableDeviceNumber };
+                        waveOutToVirtualDevice = new WaveOutEvent
+                        {
+                            DeviceNumber = vbCableDeviceNumber,
+                            DesiredLatency = desiredLatency
+                        };
                         waveOutToVirtualDevice.Init(finalOutput.ToWaveProvider());
                         waveOutToVirtualDevice.Play();
                     }
@@ -131,7 +152,11 @@ namespace VirtualMicApp
 
                     if (playbackCheckBox.IsChecked == true)
                     {
-                        waveOutToSpeakers = new WaveOutEvent() { DeviceNumber = 0 };
+                        waveOutToSpeakers = new WaveOutEvent
+                        {
+                            DeviceNumber = 0,
+                            DesiredLatency = desiredLatency
+                        };
                         waveOutToSpeakers.Init(finalOutput.ToWaveProvider());
                         waveOutToSpeakers.Play();
                     }
@@ -154,6 +179,22 @@ namespace VirtualMicApp
             catch (Exception ex)
             {
                 MessageBox.Show($"An error occurred while starting: {ex.Message}. Please inform koslz at: @iakzs:matrix.org");
+            }
+        }
+
+        private void Capture_DataAvailable(object? sender, WaveInEventArgs e)
+        {
+            if (bufferedWaveProvider != null && bufferedWaveProvider.BufferedBytes < bufferedWaveProvider.WaveFormat.AverageBytesPerSecond)
+            {
+                bufferedWaveProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
+            }
+        }
+
+        private void Microphone_DataAvailable(object? sender, WaveInEventArgs e)
+        {
+            if (microphoneBuffer != null && microphoneBuffer.BufferedBytes < microphoneBuffer.WaveFormat.AverageBytesPerSecond)
+            {
+                microphoneBuffer.AddSamples(e.Buffer, 0, e.BytesRecorded);
             }
         }
 
@@ -180,16 +221,6 @@ namespace VirtualMicApp
                 default:
                     return input;
             }
-        }
-
-        private void Capture_DataAvailable(object? sender, WaveInEventArgs e)
-        {
-            bufferedWaveProvider?.AddSamples(e.Buffer, 0, e.BytesRecorded);
-        }
-
-        private void Microphone_DataAvailable(object? sender, WaveInEventArgs e)
-        {
-            microphoneBuffer?.AddSamples(e.Buffer, 0, e.BytesRecorded);
         }
 
         private void StopButton_Click(object sender, RoutedEventArgs e)
