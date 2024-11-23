@@ -1,6 +1,9 @@
 [![.NET Core Desktop](https://github.com/iakzs/VirtualMicApp/actions/workflows/dotnet-desktop.yml/badge.svg)](https://github.com/iakzs/VirtualMicApp/actions/workflows/dotnet-desktop.yml)
 ---
 
+> [!NOTE]  
+> The old version with only the speaker option which has some bugs is at [branch 0.5-notworking](https://github.com/iakzs/VirtualMicApp/tree/0.5-notworking)
+
 ### Information
 
 The `--self-contained` flag generates additional DLLs, enabling the application to run on a Windows machine without requiring a pre-installed .NET runtime.
