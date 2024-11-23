@@ -85,8 +85,8 @@ namespace VirtualMicApp
                 var waveFormat = new WaveFormat(48000, 16, 2);
                 bufferedWaveProvider = new BufferedWaveProvider(waveFormat)
                 {
-                    DiscardOnBufferOverflow = false,
-                    BufferDuration = TimeSpan.FromMilliseconds(desiredLatency * 2)
+                    DiscardOnBufferOverflow = true,
+                    BufferDuration = TimeSpan.FromMilliseconds(500)
                 };
 
                 if (enableMicrophoneCheckBox.IsChecked == true && microphoneComboBox.SelectedItem != null)
@@ -98,13 +98,13 @@ namespace VirtualMicApp
                     {
                         DeviceNumber = micSelectedIndex,
                         WaveFormat = waveFormat,
-                        BufferMilliseconds = desiredLatency
+                        BufferMilliseconds = 50
                     };
                     microphoneInput.DataAvailable += Microphone_DataAvailable;
                     microphoneBuffer = new BufferedWaveProvider(waveFormat)
                     {
-                        DiscardOnBufferOverflow = false,
-                        BufferDuration = TimeSpan.FromMilliseconds(desiredLatency * 2)
+                        DiscardOnBufferOverflow = true,
+                        BufferDuration = TimeSpan.FromMilliseconds(500)
                     };
                 }
 
@@ -139,7 +139,7 @@ namespace VirtualMicApp
                         waveOutToVirtualDevice = new WaveOutEvent
                         {
                             DeviceNumber = vbCableDeviceNumber,
-                            DesiredLatency = desiredLatency
+                            DesiredLatency = 50
                         };
                         waveOutToVirtualDevice.Init(finalOutput.ToWaveProvider());
                         waveOutToVirtualDevice.Play();
@@ -155,7 +155,7 @@ namespace VirtualMicApp
                         waveOutToSpeakers = new WaveOutEvent
                         {
                             DeviceNumber = 0,
-                            DesiredLatency = desiredLatency
+                            DesiredLatency = 50
                         };
                         waveOutToSpeakers.Init(finalOutput.ToWaveProvider());
                         waveOutToSpeakers.Play();
@@ -184,17 +184,53 @@ namespace VirtualMicApp
 
         private void Capture_DataAvailable(object? sender, WaveInEventArgs e)
         {
-            if (bufferedWaveProvider != null && bufferedWaveProvider.BufferedBytes < bufferedWaveProvider.WaveFormat.AverageBytesPerSecond)
+            try
             {
-                bufferedWaveProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
+                if (bufferedWaveProvider != null)
+                {
+                    if (bufferedWaveProvider.BufferedBytes > bufferedWaveProvider.WaveFormat.AverageBytesPerSecond * 2)
+                    {
+                        bufferedWaveProvider.ClearBuffer();
+                        Dispatcher.Invoke(() => debugOutput.Text = "Audio source buffer cleared - overflow prevented");
+                    }
+                    bufferedWaveProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
+                    
+                    Dispatcher.Invoke(() => 
+                    {
+                        var bufferedMs = bufferedWaveProvider.BufferedDuration.TotalMilliseconds;
+                        debugOutput.Text = $"Audio source buffer: {bufferedMs:F0}ms";
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() => debugOutput.Text = $"Audio source error: {ex.Message}");
             }
         }
 
         private void Microphone_DataAvailable(object? sender, WaveInEventArgs e)
         {
-            if (microphoneBuffer != null && microphoneBuffer.BufferedBytes < microphoneBuffer.WaveFormat.AverageBytesPerSecond)
+            try
             {
-                microphoneBuffer.AddSamples(e.Buffer, 0, e.BytesRecorded);
+                if (microphoneBuffer != null)
+                {
+                    if (microphoneBuffer.BufferedBytes > microphoneBuffer.WaveFormat.AverageBytesPerSecond * 2)
+                    {
+                        microphoneBuffer.ClearBuffer();
+                        Dispatcher.Invoke(() => debugOutput.Text = "Microphone buffer cleared - overflow prevented");
+                    }
+                    microphoneBuffer.AddSamples(e.Buffer, 0, e.BytesRecorded);
+                    
+                    Dispatcher.Invoke(() => 
+                    {
+                        var bufferedMs = microphoneBuffer.BufferedDuration.TotalMilliseconds;
+                        debugOutput.Text = $"Microphone buffer: {bufferedMs:F0}ms";
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() => debugOutput.Text = $"Microphone error: {ex.Message}");
             }
         }
 
