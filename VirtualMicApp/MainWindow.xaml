@@ -14,8 +14,8 @@
             <RowDefinition Height="94*"/>
         </Grid.RowDefinitions>
         <ComboBox x:Name="audioSourceComboBox" HorizontalAlignment="Left" VerticalAlignment="Top" Width="200" Margin="10,10,0,0"/>
-        <Button x:Name="startButton" Content="Start" HorizontalAlignment="Left" VerticalAlignment="Top" Width="100" Margin="10,50,0,0" Click="StartButton_Click"/>
-        <Button x:Name="stopButton" Content="Stop" HorizontalAlignment="Left" VerticalAlignment="Top" Width="100" Margin="120,50,0,0" Click="StopButton_Click" IsEnabled="False"/>
+        <Button x:Name="StartButton" Content="Start" HorizontalAlignment="Left" VerticalAlignment="Top" Width="100" Margin="10,50,0,0" Click="StartButton_Click"/>
+        <Button x:Name="StopButton" Content="Stop" HorizontalAlignment="Left" VerticalAlignment="Top" Width="100" Margin="120,50,0,0" Click="StopButton_Click" IsEnabled="False"/>
         <TextBlock x:Name="debugOutput" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,100,0,0" Width="500" Height="200" TextWrapping="Wrap" Grid.RowSpan="3" Grid.ColumnSpan="3" />
         <CheckBox x:Name="playbackCheckBox" Content="Play sound to speakers" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="215,17,0,0" IsChecked="False"/>
     </Grid>
