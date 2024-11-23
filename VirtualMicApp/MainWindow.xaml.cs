@@ -68,7 +68,8 @@ namespace VirtualMicApp
 
         private void StartButton_Click(object sender, RoutedEventArgs e)
         {
-            if (audioSourceComboBox.SelectedItem == null)
+            var selectedText = audioSourceComboBox.SelectedItem?.ToString();
+            if (string.IsNullOrEmpty(selectedText))
             {
                 MessageBox.Show("Please select an audio device.");
                 return;
@@ -76,101 +77,122 @@ namespace VirtualMicApp
 
             try
             {
-                var selectedText = audioSourceComboBox.SelectedItem.ToString();
                 var selectedIndex = int.Parse(selectedText.Split('-')[0].Trim());
+                var waveFormat = new WaveFormat(44100, 16, 2);
 
                 capture = new WasapiLoopbackCapture();
+                capture.WaveFormat = waveFormat;
                 capture.DataAvailable += Capture_DataAvailable;
-
-                var waveFormat = new WaveFormat(48000, 16, 2);
                 bufferedWaveProvider = new BufferedWaveProvider(waveFormat)
                 {
                     DiscardOnBufferOverflow = true,
-                    BufferDuration = TimeSpan.FromMilliseconds(500)
+                    BufferDuration = TimeSpan.FromMilliseconds(100)
                 };
 
-                if (enableMicrophoneCheckBox.IsChecked == true && microphoneComboBox.SelectedItem != null)
+                var sources = new List<ISampleProvider>();
+                sources.Add(new VolumeSampleProvider(bufferedWaveProvider.ToSampleProvider()) 
+                { 
+                    Volume = audioSourceGain 
+                });
+
+                if (enableMicrophoneCheckBox.IsChecked == true)
                 {
-                    var micSelectedText = microphoneComboBox.SelectedItem.ToString();
+                    var micSelectedText = microphoneComboBox.SelectedItem?.ToString();
+                    if (string.IsNullOrEmpty(micSelectedText))
+                    {
+                        MessageBox.Show("Please select a microphone device.");
+                        return;
+                    }
+
                     var micSelectedIndex = int.Parse(micSelectedText.Split('-')[0].Trim());
-                    
                     microphoneInput = new WaveIn
                     {
                         DeviceNumber = micSelectedIndex,
                         WaveFormat = waveFormat,
-                        BufferMilliseconds = 50
+                        BufferMilliseconds = 20
                     };
                     microphoneInput.DataAvailable += Microphone_DataAvailable;
                     microphoneBuffer = new BufferedWaveProvider(waveFormat)
                     {
                         DiscardOnBufferOverflow = true,
-                        BufferDuration = TimeSpan.FromMilliseconds(500)
+                        BufferDuration = TimeSpan.FromMilliseconds(100)
                     };
-                }
 
-                var sources = new List<ISampleProvider>();
-                if (bufferedWaveProvider != null)
-                {
-                    sources.Add(new VolumeSampleProvider(bufferedWaveProvider.ToSampleProvider()) 
-                    { 
-                        Volume = audioSourceGain 
-                    });
-                }
-
-                if (microphoneBuffer != null)
-                {
                     sources.Add(new VolumeSampleProvider(microphoneBuffer.ToSampleProvider()) 
                     { 
                         Volume = microphoneGain 
                     });
                 }
 
-                if (sources.Count > 0)
+                mixer = new MixingSampleProvider(sources)
                 {
-                    mixer = new MixingSampleProvider(sources)
+                    ReadFully = true
+                };
+
+                ISampleProvider finalOutput;
+                var effectType = effectsComboBox.SelectedItem?.ToString() ?? "None";
+                switch (effectType)
+                {
+                    case "Echo":
+                        finalOutput = new EchoEffect(mixer)
+                        {
+                            Delay = (int)(effectParam1.Value * 1000),
+                            Decay = (float)effectParam2.Value
+                        };
+                        break;
+                    case "Reverb":
+                        var delay1 = new EchoEffect(mixer) { Delay = 50, Decay = 0.3f };
+                        finalOutput = new EchoEffect(delay1) { Delay = 100, Decay = 0.2f };
+                        break;
+                    case "Low Quality Mic":
+                        finalOutput = new LowQualityMicEffect(mixer)
+                        {
+                            BitReduction = (int)(effectParam1.Value * 6) + 2,
+                            NoiseLevel = (float)effectParam2.Value * 0.1f
+                        };
+                        break;
+                    default:
+                        finalOutput = mixer;
+                        break;
+                }
+
+                int vbCableDeviceNumber = FindVBCableDeviceIndex();
+                if (vbCableDeviceNumber != -1)
+                {
+                    waveOutToVirtualDevice = new WaveOutEvent
                     {
-                        ReadFully = true
+                        DeviceNumber = vbCableDeviceNumber,
+                        DesiredLatency = 20
                     };
-                    var finalOutput = ApplyEffects(mixer);
-
-                    int vbCableDeviceNumber = FindVBCableDeviceIndex();
-                    if (vbCableDeviceNumber != -1)
-                    {
-                        waveOutToVirtualDevice = new WaveOutEvent
-                        {
-                            DeviceNumber = vbCableDeviceNumber,
-                            DesiredLatency = 50
-                        };
-                        waveOutToVirtualDevice.Init(finalOutput.ToWaveProvider());
-                        waveOutToVirtualDevice.Play();
-                    }
-                    else
-                    {
-                        MessageBox.Show("VB-Cable not found. Please install VB-Cable.");
-                        return;
-                    }
-
-                    if (playbackCheckBox.IsChecked == true)
-                    {
-                        waveOutToSpeakers = new WaveOutEvent
-                        {
-                            DeviceNumber = 0,
-                            DesiredLatency = 50
-                        };
-                        waveOutToSpeakers.Init(finalOutput.ToWaveProvider());
-                        waveOutToSpeakers.Play();
-                    }
+                    waveOutToVirtualDevice.Init(finalOutput.ToWaveProvider());
+                    waveOutToVirtualDevice.Play();
+                    Dispatcher.Invoke(() => debugOutput.Text = $"Started VB-Cable output on device {vbCableDeviceNumber}");
                 }
                 else
                 {
-                    MessageBox.Show("No audio sources available.");
+                    MessageBox.Show("VB-Cable not found. Please install VB-Cable.");
                     return;
                 }
 
+                if (playbackCheckBox.IsChecked == true)
+                {
+                    waveOutToSpeakers = new WaveOutEvent
+                    {
+                        DeviceNumber = 0,
+                        DesiredLatency = 20
+                    };
+                    waveOutToSpeakers.Init(finalOutput.ToWaveProvider());
+                    waveOutToSpeakers.Play();
+                    Dispatcher.Invoke(() => debugOutput.Text += "\nStarted speaker output");
+                }
+
                 capture.StartRecording();
+                Dispatcher.Invoke(() => debugOutput.Text += "\nStarted audio capture");
+
                 if (microphoneInput != null)
                 {
                     microphoneInput.StartRecording();
+                    Dispatcher.Invoke(() => debugOutput.Text += "\nStarted microphone capture");
                 }
 
                 StartButton.IsEnabled = false;
@@ -179,6 +201,7 @@ namespace VirtualMicApp
             catch (Exception ex)
             {
                 MessageBox.Show($"An error occurred while starting: {ex.Message}. Please inform koslz at: @iakzs:matrix.org");
+                StopAndCleanup();
             }
         }
 
@@ -234,31 +257,6 @@ namespace VirtualMicApp
             }
         }
 
-        private ISampleProvider ApplyEffects(ISampleProvider input)
-        {
-            switch (effectsComboBox.SelectedItem?.ToString())
-            {
-                case "Echo":
-                    return new EchoEffect(input)
-                    {
-                        Delay = (int)(effectParam1.Value * 1000),
-                        Decay = (float)effectParam2.Value
-                    };
-                case "Reverb":
-                    var delay1 = new EchoEffect(input) { Delay = 50, Decay = 0.3f };
-                    var delay2 = new EchoEffect(delay1) { Delay = 100, Decay = 0.2f };
-                    return delay2;
-                case "Low Quality Mic":
-                    return new LowQualityMicEffect(input)
-                    {
-                        BitReduction = (int)(effectParam1.Value * 6) + 2,
-                        NoiseLevel = (float)effectParam2.Value * 0.1f
-                    };
-                default:
-                    return input;
-            }
-        }
-
         private void StopButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -295,6 +293,24 @@ namespace VirtualMicApp
                 }
             }
             return -1;
+        }
+
+        private void StopAndCleanup()
+        {
+            capture?.StopRecording();
+            capture?.Dispose();
+
+            microphoneInput?.StopRecording();
+            microphoneInput?.Dispose();
+
+            waveOutToSpeakers?.Stop();
+            waveOutToSpeakers?.Dispose();
+
+            waveOutToVirtualDevice?.Stop();
+            waveOutToVirtualDevice?.Dispose();
+
+            StartButton.IsEnabled = true;
+            StopButton.IsEnabled = false;
         }
     }
 
