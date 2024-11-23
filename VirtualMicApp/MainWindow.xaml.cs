@@ -83,32 +83,28 @@ namespace VirtualMicApp
                 var selectedIndex = int.Parse(selectedText.Split('-')[0].Trim());
 
                 capture = new WasapiLoopbackCapture();
-                var waveFormat = new WaveFormat(48000, 16, 2);
+                var waveFormat = WaveFormat.CreateIeeeFloatWaveFormat(48000, 2);
                 capture.WaveFormat = waveFormat;
 
                 bufferedWaveProvider = new BufferedWaveProvider(waveFormat)
                 {
-                    DiscardOnBufferOverflow = true,
-                    BufferLength = waveFormat.AverageBytesPerSecond * 2
+                    DiscardOnBufferOverflow = false,
+                    BufferLength = waveFormat.AverageBytesPerSecond / 2
                 };
 
                 capture.DataAvailable += (s, a) =>
                 {
-                    if (bufferedWaveProvider != null)
+                    if (bufferedWaveProvider != null && 
+                        bufferedWaveProvider.BufferedBytes < bufferedWaveProvider.BufferLength - a.BytesRecorded)
                     {
-                        if (bufferedWaveProvider.BufferedBytes > bufferedWaveProvider.WaveFormat.AverageBytesPerSecond)
-                        {
-                            bufferedWaveProvider.ClearBuffer();
-                            Dispatcher.Invoke(() => debugOutput.Text = "Audio source buffer cleared");
-                        }
                         bufferedWaveProvider.AddSamples(a.Buffer, 0, a.BytesRecorded);
                     }
                 };
 
                 var sources = new List<ISampleProvider>();
-                var volumeProvider = new VolumeSampleProvider(bufferedWaveProvider.ToSampleProvider());
-                volumeProvider.Volume = audioSourceGain;
-                sources.Add(volumeProvider);
+                var audioSourceProvider = new SampleChannel(bufferedWaveProvider, true);
+                audioSourceProvider.Volume = audioSourceGain;
+                sources.Add(audioSourceProvider);
 
                 if (enableMicrophoneCheckBox.IsChecked == true)
                 {
@@ -129,69 +125,65 @@ namespace VirtualMicApp
 
                     microphoneBuffer = new BufferedWaveProvider(waveFormat)
                     {
-                        DiscardOnBufferOverflow = true,
-                        BufferLength = waveFormat.AverageBytesPerSecond
+                        DiscardOnBufferOverflow = false,
+                        BufferLength = waveFormat.AverageBytesPerSecond / 4
                     };
 
                     microphoneInput.DataAvailable += (s, a) =>
                     {
-                        if (microphoneBuffer != null)
+                        if (microphoneBuffer != null && 
+                            microphoneBuffer.BufferedBytes < microphoneBuffer.BufferLength - a.BytesRecorded)
                         {
-                            if (microphoneBuffer.BufferedBytes > microphoneBuffer.WaveFormat.AverageBytesPerSecond)
-                            {
-                                microphoneBuffer.ClearBuffer();
-                                Dispatcher.Invoke(() => debugOutput.Text = "Microphone buffer cleared");
-                            }
                             microphoneBuffer.AddSamples(a.Buffer, 0, a.BytesRecorded);
                         }
                     };
 
-                    var micVolumeProvider = new VolumeSampleProvider(microphoneBuffer.ToSampleProvider());
-                    micVolumeProvider.Volume = microphoneGain;
-                    sources.Add(micVolumeProvider);
+                    var micChannel = new SampleChannel(microphoneBuffer, true);
+                    micChannel.Volume = microphoneGain;
+                    sources.Add(micChannel);
                 }
 
-                mixer = new MixingSampleProvider(sources)
+                mixer = new MixingSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(48000, 2));
+                foreach (var source in sources)
                 {
-                    ReadFully = true
-                };
+                    mixer.AddMixerInput(source);
+                }
 
-                ISampleProvider finalOutput;
+                ISampleProvider finalOutput = mixer;
                 var effectType = effectsComboBox.SelectedItem?.ToString() ?? "None";
-                switch (effectType)
+                if (effectType != "None")
                 {
-                    case "Echo":
-                        finalOutput = new EchoEffect(mixer)
-                        {
-                            Delay = (int)(effectParam1.Value * 1000),
-                            Decay = (float)effectParam2.Value
-                        };
-                        break;
-                    case "Reverb":
-                        var delay1 = new EchoEffect(mixer) { Delay = 50, Decay = 0.3f };
-                        finalOutput = new EchoEffect(delay1) { Delay = 100, Decay = 0.2f };
-                        break;
-                    case "Low Quality Mic":
-                        finalOutput = new LowQualityMicEffect(mixer)
-                        {
-                            BitReduction = (int)(effectParam1.Value * 6) + 2,
-                            NoiseLevel = (float)effectParam2.Value * 0.1f
-                        };
-                        break;
-                    default:
-                        finalOutput = mixer;
-                        break;
+                    switch (effectType)
+                    {
+                        case "Echo":
+                            finalOutput = new EchoEffect(mixer)
+                            {
+                                Delay = (int)(effectParam1.Value * 1000),
+                                Decay = (float)effectParam2.Value
+                            };
+                            break;
+                        case "Reverb":
+                            var delay1 = new EchoEffect(mixer) { Delay = 50, Decay = 0.3f };
+                            finalOutput = new EchoEffect(delay1) { Delay = 100, Decay = 0.2f };
+                            break;
+                        case "Low Quality Mic":
+                            finalOutput = new LowQualityMicEffect(mixer)
+                            {
+                                BitReduction = (int)(effectParam1.Value * 6) + 2,
+                                NoiseLevel = (float)effectParam2.Value * 0.1f
+                            };
+                            break;
+                    }
                 }
+
+                var vbCableOutput = finalOutput.ToWaveProvider();
+                var speakerOutput = finalOutput.ToWaveProvider();
 
                 int vbCableDeviceNumber = FindVBCableDeviceIndex();
                 if (vbCableDeviceNumber != -1)
                 {
-                    waveOutToVirtualDevice = new WaveOutEvent
-                    {
-                        DeviceNumber = vbCableDeviceNumber,
-                        DesiredLatency = 30
-                    };
-                    waveOutToVirtualDevice.Init(finalOutput.ToWaveProvider());
+                    waveOutToVirtualDevice = new WaveOutEvent { DeviceNumber = vbCableDeviceNumber };
+                    waveOutToVirtualDevice.Init(vbCableOutput);
                     waveOutToVirtualDevice.Play();
                     Dispatcher.Invoke(() => debugOutput.Text = $"Started VB-Cable output on device {vbCableDeviceNumber}");
                 }
@@ -201,16 +193,19 @@ namespace VirtualMicApp
                     return;
                 }
 
-                if (playbackCheckBox.IsChecked == true)
+                if (playbackCheckBox.IsChecked ?? false)
                 {
-                    waveOutToSpeakers = new WaveOutEvent
+                    try 
                     {
-                        DeviceNumber = 0,
-                        DesiredLatency = 30
-                    };
-                    waveOutToSpeakers.Init(finalOutput.ToWaveProvider());
-                    waveOutToSpeakers.Play();
-                    Dispatcher.Invoke(() => debugOutput.Text += "\nStarted speaker output");
+                        waveOutToSpeakers = new WaveOutEvent { DeviceNumber = -1 }; // -1 for default output device
+                        waveOutToSpeakers.Init(speakerOutput);
+                        waveOutToSpeakers.Play();
+                        Dispatcher.Invoke(() => debugOutput.Text += "\nStarted speaker output");
+                    }
+                    catch (Exception ex)
+                    {
+                        Dispatcher.Invoke(() => debugOutput.Text += $"\nError starting speaker output: {ex.Message}");
+                    }
                 }
 
                 capture.StartRecording();
@@ -234,7 +229,48 @@ namespace VirtualMicApp
 
         private void StopButton_Click(object sender, RoutedEventArgs e)
         {
-            StopAndCleanup();
+            try
+            {
+                if (capture != null)
+                {
+                    capture.StopRecording();
+                    capture.Dispose();
+                    capture = null;
+                }
+
+                if (microphoneInput != null)
+                {
+                    microphoneInput.StopRecording();
+                    microphoneInput.Dispose();
+                    microphoneInput = null;
+                }
+
+                if (waveOutToVirtualDevice != null)
+                {
+                    waveOutToVirtualDevice.Stop();
+                    waveOutToVirtualDevice.Dispose();
+                    waveOutToVirtualDevice = null;
+                }
+
+                if (waveOutToSpeakers != null)
+                {
+                    waveOutToSpeakers.Stop();
+                    waveOutToSpeakers.Dispose();
+                    waveOutToSpeakers = null;
+                }
+
+                bufferedWaveProvider = null;
+                microphoneBuffer = null;
+                mixer = null;
+
+                StartButton.IsEnabled = true;
+                StopButton.IsEnabled = false;
+                Dispatcher.Invoke(() => debugOutput.Text = "Stopped all audio processing");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error stopping audio: {ex.Message}");
+            }
         }
 
         private void StopAndCleanup()
