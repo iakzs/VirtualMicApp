@@ -12,6 +12,8 @@ namespace VirtualMicApp
         private WaveOutEvent? waveOutToVirtualDevice;
         private WaveOutEvent? waveOutToSpeakers;
         private BufferedWaveProvider? bufferedWaveProvider;
+        private System.Windows.Controls.ComboBox audioSourceComboBox;
+        private System.Windows.Controls.CheckBox playbackCheckBox;
 
         public MainWindow()
         {
@@ -66,8 +68,8 @@ namespace VirtualMicApp
                 capture.StartRecording();
                 waveOutToVirtualDevice.Play();
 
-                startButton.IsEnabled = false;
-                stopButton.IsEnabled = true;
+                StartButton.IsEnabled = false;
+                StopButton.IsEnabled = true;
             }
             catch (Exception ex)
             {
@@ -93,8 +95,8 @@ namespace VirtualMicApp
                 waveOutToVirtualDevice?.Stop();
                 waveOutToVirtualDevice?.Dispose();
 
-                startButton.IsEnabled = true;
-                stopButton.IsEnabled = false;
+                StartButton.IsEnabled = true;
+                StopButton.IsEnabled = false;
             }
             catch (Exception ex)
             {
