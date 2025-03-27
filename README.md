@@ -2,7 +2,7 @@
 ---
 
 > [!NOTE]  
-> The old version with only the speaker option which has some bugs is at [branch 0.5-notworking](https://github.com/iakzs/VirtualMicApp/tree/0.5-notworking)
+> The old version with only the speaker option which has bugs is at the [branch 0.5-notworking](https://github.com/iakzs/VirtualMicApp/tree/0.5-notworking)
 
 ### Information
 
@@ -13,6 +13,6 @@ The `--self-contained` flag generates additional DLLs, enabling the application 
 ### Requirements
 
 - **Operating System:** Windows 7, 8, 10, or 11 (Tested on Windows 11)
-- **Additional Software:** [VB-Audio](https://vb-audio.com/Cable/index.htm)
+- **Needed Software:** [VB-Audio](https://vb-audio.com/Cable/index.htm)
 
 ---

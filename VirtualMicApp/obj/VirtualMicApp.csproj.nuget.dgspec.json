@@ -1,27 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "B:\\source\\repos\\VirtualMicApp\\VirtualMicApp\\VirtualMicApp.csproj": {}
+    "C:\\Users\\benji\\RiderProjects\\VirtualMicApp\\VirtualMicApp\\VirtualMicApp.csproj": {}
   },
   "projects": {
-    "B:\\source\\repos\\VirtualMicApp\\VirtualMicApp\\VirtualMicApp.csproj": {
+    "C:\\Users\\benji\\RiderProjects\\VirtualMicApp\\VirtualMicApp\\VirtualMicApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "B:\\source\\repos\\VirtualMicApp\\VirtualMicApp\\VirtualMicApp.csproj",
+        "projectUniqueName": "C:\\Users\\benji\\RiderProjects\\VirtualMicApp\\VirtualMicApp\\VirtualMicApp.csproj",
         "projectName": "VirtualMicApp",
-        "projectPath": "B:\\source\\repos\\VirtualMicApp\\VirtualMicApp\\VirtualMicApp.csproj",
-        "packagesPath": "C:\\Users\\Benja\\.nuget\\packages\\",
-        "outputPath": "B:\\source\\repos\\VirtualMicApp\\VirtualMicApp\\obj\\",
+        "projectPath": "C:\\Users\\benji\\RiderProjects\\VirtualMicApp\\VirtualMicApp\\VirtualMicApp.csproj",
+        "packagesPath": "C:\\Users\\benji\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\benji\\RiderProjects\\VirtualMicApp\\VirtualMicApp\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Benja\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\benji\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0-windows"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -38,8 +36,9 @@
         "restoreAuditProperties": {
           "enableAudit": "true",
           "auditLevel": "low",
-          "auditMode": "direct"
-        }
+          "auditMode": "all"
+        },
+        "SdkAnalysisLevel": "9.0.100"
       },
       "frameworks": {
         "net8.0-windows7.0": {
@@ -81,6 +80,24 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "version": "[8.0.11, 8.0.11]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
@@ -89,7 +106,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.303/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Users\\benji\\.dotnet\\sdk\\9.0.100/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

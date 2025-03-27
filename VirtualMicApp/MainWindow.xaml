@@ -59,151 +59,180 @@
         </Style>
     </Window.Resources>
 
-    <Border Padding="25">
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <Border Padding="25">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                <TextBlock Text="Virtual Mic App"
-                         FontSize="28"
-                         FontWeight="Bold"
-                         Foreground="#111827"
-                         Margin="0,0,0,25"/>
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <TextBlock Text="Virtual Mic App"
+                             FontSize="28"
+                             FontWeight="Bold"
+                             Foreground="#111827"
+                             Margin="0,0,0,25"/>
 
-                <Border Background="White"
-                        CornerRadius="8"
-                        Padding="20"
-                        BorderThickness="1"
-                        BorderBrush="#E5E7EB"
-                        Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Primary Audio Source" 
-                                 FontSize="18" 
-                                 Margin="0,0,0,15"/>
-                        <TextBlock Text="Source Device:" 
-                                 Margin="0,0,0,5" 
-                                 FontWeight="Normal"/>
-                        <ComboBox x:Name="audioSourceComboBox" 
-                                Margin="0,0,0,10"/>
-                        <TextBlock Text="Volume:" 
-                                 Margin="0,0,0,5" 
-                                 FontWeight="Normal"/>
-                        <Slider x:Name="audioSourceVolume" 
-                               Minimum="0" 
-                               Maximum="1" 
-                               Value="1"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Background="White"
-                        CornerRadius="8"
-                        Padding="20"
-                        BorderThickness="1"
-                        BorderBrush="#E5E7EB">
-                    <StackPanel>
-                        <CheckBox x:Name="enableMicrophoneCheckBox" 
-                                Content="Enable Microphone" 
-                                Margin="0,0,0,15"/>
-                        
-                        <StackPanel x:Name="microphonePanel" 
-                                  IsEnabled="{Binding IsChecked, ElementName=enableMicrophoneCheckBox}">
-                            <TextBlock Text="Microphone Device:" 
+                    <Border Background="White"
+                            CornerRadius="8"
+                            Padding="20"
+                            BorderThickness="1"
+                            BorderBrush="#E5E7EB"
+                            Margin="0,0,0,20">
+                        <StackPanel>
+                            <TextBlock Text="Primary Audio Source" 
+                                     FontSize="18" 
+                                     Margin="0,0,0,15"/>
+                            <TextBlock Text="Source Device:" 
                                      Margin="0,0,0,5" 
                                      FontWeight="Normal"/>
-                            <ComboBox x:Name="microphoneComboBox" 
+                            <ComboBox x:Name="audioSourceComboBox" 
                                     Margin="0,0,0,10"/>
-                            <TextBlock Text="Microphone Volume:" 
+                            <TextBlock Text="Volume:" 
                                      Margin="0,0,0,5" 
                                      FontWeight="Normal"/>
-                            <Slider x:Name="microphoneVolume" 
+                            <Slider x:Name="audioSourceVolume" 
                                    Minimum="0" 
                                    Maximum="1" 
                                    Value="1"/>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
+                    </Border>
 
-            <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                <Border Background="White"
-                        CornerRadius="8"
-                        Padding="20"
-                        BorderThickness="1"
-                        BorderBrush="#E5E7EB"
-                        Margin="0,53,0,20">
-                    <StackPanel>
-                        <TextBlock Text="Audio Effects" 
-                                 FontSize="18" 
-                                 Margin="0,0,0,15"/>
-                        <TextBlock Text="Effect Type:" 
-                                 Margin="0,0,0,5" 
-                                 FontWeight="Normal"/>
-                        <ComboBox x:Name="effectsComboBox" 
-                                Margin="0,0,0,15"/>
-                        
-                        <TextBlock Text="Effect Parameter 1:" 
-                                 Margin="0,0,0,5" 
-                                 FontWeight="Normal"/>
-                        <Slider x:Name="effectParam1" 
-                               Minimum="0" 
-                               Maximum="1" 
-                               Value="0.5"/>
-                        
-                        <TextBlock Text="Effect Parameter 2:" 
-                                 Margin="0,10,0,5" 
-                                 FontWeight="Normal"/>
-                        <Slider x:Name="effectParam2" 
-                               Minimum="0" 
-                               Maximum="1" 
-                               Value="0.5"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Background="White"
-                        CornerRadius="8"
-                        Padding="20"
-                        BorderThickness="1"
-                        BorderBrush="#E5E7EB"
-                        Margin="0,0,0,20">
-                    <StackPanel>
-                        <CheckBox x:Name="playbackCheckBox" 
-                                Content="Play sound to speakers" 
-                                Margin="0,0,0,20"/>
-                        
-                        <StackPanel Orientation="Horizontal" 
-                                  HorizontalAlignment="Center">
-                            <Button x:Name="StartButton" 
-                                    Content="Start Recording" 
-                                    Width="150" 
-                                    Margin="0,0,15,0" 
-                                    Click="StartButton_Click"/>
-                            <Button x:Name="StopButton" 
-                                    Content="Stop Recording" 
-                                    Width="150" 
-                                    Click="StopButton_Click" 
-                                    IsEnabled="False"
-                                    Background="#DC2626"/>
+                    <Border Background="White"
+                            CornerRadius="8"
+                            Padding="20"
+                            BorderThickness="1"
+                            BorderBrush="#E5E7EB">
+                        <StackPanel>
+                            <CheckBox x:Name="enableMicrophoneCheckBox" 
+                                    Content="Enable Microphone" 
+                                    Margin="0,0,0,15"/>
+                            
+                            <StackPanel x:Name="microphonePanel" 
+                                      IsEnabled="{Binding IsChecked, ElementName=enableMicrophoneCheckBox}">
+                                <TextBlock Text="Microphone Device:" 
+                                         Margin="0,0,0,5" 
+                                         FontWeight="Normal"/>
+                                <ComboBox x:Name="microphoneComboBox" 
+                                        Margin="0,0,0,10"/>
+                                <TextBlock Text="Microphone Volume:" 
+                                         Margin="0,0,0,5" 
+                                         FontWeight="Normal"/>
+                                <Slider x:Name="microphoneVolume" 
+                                       Minimum="0" 
+                                       Maximum="1" 
+                                       Value="1"/>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
+                    </Border>
+                </StackPanel>
 
-                <Border Background="White"
-                        CornerRadius="8"
-                        BorderThickness="1"
-                        BorderBrush="#E5E7EB">
-                    <ScrollViewer Height="150" 
-                                Margin="20">
-                        <TextBlock x:Name="debugOutput" 
-                                 TextWrapping="Wrap"
-                                 FontFamily="Consolas"
-                                 FontSize="12"
-                                 FontWeight="Normal"/>
-                    </ScrollViewer>
-                </Border>
-            </StackPanel>
-        </Grid>
-    </Border>
+                <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                    <Border Background="White"
+                            CornerRadius="8"
+                            Padding="20"
+                            BorderThickness="1"
+                            BorderBrush="#E5E7EB"
+                            Margin="0,53,0,20">
+                        <StackPanel>
+                            <TextBlock Text="Audio Effects" 
+                                     FontSize="18" 
+                                     Margin="0,0,0,15"/>
+                            <TextBlock Text="Effect Type:" 
+                                     Margin="0,0,0,5" 
+                                     FontWeight="Normal"/>
+                            <ComboBox x:Name="effectsComboBox" 
+                                    Margin="0,0,0,15"/>
+                            
+                            <TextBlock Text="Effect Parameter 1:" 
+                                     Margin="0,0,0,5" 
+                                     FontWeight="Normal"/>
+                            <Slider x:Name="effectParam1" 
+                                   Minimum="0" 
+                                   Maximum="1" 
+                                   Value="0.5"/>
+                            
+                            <TextBlock Text="Effect Parameter 2:" 
+                                     Margin="0,10,0,5" 
+                                     FontWeight="Normal"/>
+                            <Slider x:Name="effectParam2" 
+                                   Minimum="0" 
+                                   Maximum="1" 
+                                   Value="0.5"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="White"
+                            CornerRadius="8"
+                            Padding="20"
+                            BorderThickness="1"
+                            BorderBrush="#E5E7EB"
+                            Margin="0,0,0,20">
+                        <StackPanel>
+                            <TextBlock Text="Sound Effects Slots"
+                                       FontSize="18"
+                                       Margin="0,0,0,15"/>
+
+                            <ItemsControl x:Name="soundEffectSlotsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <TextBox Width="200" x:Name="EffectName" Text="{Binding Name, Mode=TwoWay}" IsReadOnly="True" VerticalAlignment="Center"/>
+                                            <Button Content="Load" Width="100" Margin="5,0" Command="{Binding LoadCommand}" />
+                                            <Button Content="Play" Width="75" Margin="5,0" Command="{Binding PlayCommand}" IsEnabled="{Binding CanPlay}"/>
+                                            <Button Content="Pause" Width="75" Margin="5,0" Command="{Binding PauseCommand}" IsEnabled="{Binding CanPause}"/>
+                                            <Button Content="Stop" Width="75" Margin="5,0" Command="{Binding StopCommand}" IsEnabled="{Binding CanStop}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    
+                    <Border Background="White"
+                            CornerRadius="8"
+                            Padding="20"
+                            BorderThickness="1"
+                            BorderBrush="#E5E7EB"
+                            Margin="0,0,0,20">
+                        <StackPanel>
+                            <CheckBox x:Name="playbackCheckBox" 
+                                    Content="Play sound to speakers" 
+                                    Margin="0,0,0,20"/>
+                            
+                            <StackPanel Orientation="Horizontal" 
+                                      HorizontalAlignment="Center">
+                                <Button x:Name="StartButton" 
+                                        Content="Start Recording" 
+                                        Width="150" 
+                                        Margin="0,0,15,0" 
+                                        Click="StartButton_Click"/>
+                                <Button x:Name="StopButton" 
+                                        Content="Stop Recording" 
+                                        Width="150" 
+                                        Click="StopButton_Click" 
+                                        IsEnabled="False"
+                                        Background="#DC2626"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="White"
+                            CornerRadius="8"
+                            BorderThickness="1"
+                            BorderBrush="#E5E7EB">
+                        <ScrollViewer Height="150" 
+                                    Margin="20">
+                            <TextBlock x:Name="debugOutput" 
+                                     TextWrapping="Wrap"
+                                     FontFamily="Consolas"
+                                     FontSize="12"
+                                     FontWeight="Normal"/>
+                        </ScrollViewer>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </ScrollViewer>
 </Window>

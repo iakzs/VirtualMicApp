@@ -4,16 +4,16 @@
 winexe
 C#
 .cs
-B:\source\repos\VirtualMicApp\VirtualMicApp\obj\Release\net8.0-windows\
+C:\Users\benji\RiderProjects\VirtualMicApp\VirtualMicApp\obj\Release\net8.0-windows\
 VirtualMicApp
 none
 false
 TRACE;RELEASE;NET;NET8_0;NETCOREAPP
-B:\source\repos\VirtualMicApp\VirtualMicApp\App.xaml
+C:\Users\benji\RiderProjects\VirtualMicApp\VirtualMicApp\App.xaml
 11407045341
 
 4992427371
-213578506563
+213-283144589
 MainWindow.xaml;
 
 False

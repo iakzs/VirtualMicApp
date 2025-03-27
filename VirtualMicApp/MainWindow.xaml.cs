@@ -1,14 +1,217 @@
-using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
-using System;
-using System.Linq;
 using System.Windows;
-using System.Windows.Controls;
-using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows.Input;
 
 namespace VirtualMicApp
 {
+    public static class AudioDeviceHelper
+    {
+        public static int FindVBCableDeviceIndex()
+        {
+            for (int i = 0; i < WaveOut.DeviceCount; i++)
+            {
+                var capabilities = WaveOut.GetCapabilities(i);
+                if (capabilities.ProductName.Contains("CABLE", StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+    }
+
+
+    public class RelayCommand : ICommand
+    {
+        private readonly Action execute;
+        private readonly Func<bool>? canExecute;
+
+        public RelayCommand(Action execute, Func<bool>? canExecute = null)
+        {
+            this.execute = execute;
+            this.canExecute = canExecute;
+        }
+
+        public event EventHandler? CanExecuteChanged;
+
+        public bool CanExecute(object? parameter) => canExecute == null || canExecute();
+
+        public void Execute(object? parameter) => execute();
+
+        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public class SoundEffectSlot : INotifyPropertyChanged
+    {
+        private string _name = "Empty";
+        private bool _canPlay = false;
+        private bool _canPause = false;
+        private bool _canStop = false;
+        private WaveOutEvent? _player;
+        private AudioFileReader? _audioReader;
+
+        public string Name
+        {
+            get => _name;
+            set
+            {
+                _name = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool CanPlay
+        {
+            get => _canPlay;
+            set
+            {
+                _canPlay = value;
+                OnPropertyChanged();
+                (PlayCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        public bool CanPause
+        {
+            get => _canPause;
+            set
+            {
+                _canPause = value;
+                OnPropertyChanged();
+                (PauseCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        public bool CanStop
+        {
+            get => _canStop;
+            set
+            {
+                _canStop = value;
+                OnPropertyChanged();
+                (StopCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        public ICommand LoadCommand { get; }
+        public ICommand PlayCommand { get; }
+        public ICommand PauseCommand { get; }
+        public ICommand StopCommand { get; }
+
+        public SoundEffectSlot()
+        {
+            LoadCommand = new RelayCommand(LoadSound);
+            PlayCommand = new RelayCommand(PlaySound, () => CanPlay);
+            PauseCommand = new RelayCommand(PauseSound, () => CanPause);
+            StopCommand = new RelayCommand(StopSound, () => CanStop);
+        }
+
+        private void LoadSound()
+        {
+            var openFileDialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Audio Files|*.wav;*.mp3",
+                Title = "Select a Sound Effect"
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                try
+                {
+                    _audioReader?.Dispose();
+                    _audioReader = new AudioFileReader(openFileDialog.FileName);
+
+                    Name = System.IO.Path.GetFileName(openFileDialog.FileName);
+                    _player = new WaveOutEvent();
+                    _player.Init(_audioReader);
+
+                    CanPlay = true;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error loading sound: {ex.Message}");
+                }
+            }
+        }
+
+        private void PlaySound()
+        {
+            int vbCableDeviceNumber = AudioDeviceHelper.FindVBCableDeviceIndex();
+            if (vbCableDeviceNumber == -1)
+            {
+                MessageBox.Show("VB-Cable not found. Please install or configure VB-Cable.");
+                return;
+            }
+
+            try
+            {
+                if (_audioReader == null)
+                {
+                    MessageBox.Show("Please load a sound file first.");
+                    return;
+                }
+
+                if (_player != null && _player.PlaybackState == PlaybackState.Paused)
+                {
+                    _player.Play();
+                }
+                else
+                {
+                    _player?.Dispose();
+                    _player = new WaveOutEvent
+                    {
+                        DeviceNumber = vbCableDeviceNumber
+                    };
+
+                    _player.Init(_audioReader);
+                    _player.Play();
+                }
+
+                CanPause = true;
+                CanStop = true;
+                CanPlay = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error while playing sound: {ex.Message}");
+            }
+        }
+
+        private void PauseSound()
+        {
+            if (_player != null && _player.PlaybackState == PlaybackState.Playing)
+            {
+                _player.Pause();
+
+                CanPause = false;
+                CanPlay = true;
+            }
+        }
+
+        private void StopSound()
+        {
+            if (_player != null)
+            {
+                _player.Stop();
+                _audioReader.Position = 0;
+
+                CanStop = false;
+                CanPause = false;
+                CanPlay = true;
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    
     public partial class MainWindow : Window
     {
         private WasapiLoopbackCapture? capture;
@@ -20,7 +223,7 @@ namespace VirtualMicApp
         private MixingSampleProvider? mixer;
         private float audioSourceGain = 1.0f;
         private float microphoneGain = 1.0f;
-
+        private List<SoundEffectSlot>? soundEffectSlots;
         public MainWindow()
         {
             InitializeComponent();
@@ -28,6 +231,13 @@ namespace VirtualMicApp
             LoadMicrophoneDevices();
             LoadEffects();
             SetupVolumeControls();
+            InitializeSoundEffectsSlots();
+        }
+
+        private void InitializeSoundEffectsSlots()
+        {
+            soundEffectSlots = Enumerable.Range(1, 5).Select(_ => new SoundEffectSlot()).ToList();
+            soundEffectSlotsControl.ItemsSource = soundEffectSlots;
         }
 
         private void LoadAudioDevices()
@@ -38,6 +248,7 @@ namespace VirtualMicApp
                 var capabilities = WaveOut.GetCapabilities(i);
                 audioSourceComboBox.Items.Add($"{i} - {capabilities.ProductName}");
             }
+
             if (audioSourceComboBox.Items.Count > 0)
                 audioSourceComboBox.SelectedIndex = 0;
         }
@@ -50,6 +261,7 @@ namespace VirtualMicApp
                 var capabilities = WaveIn.GetCapabilities(i);
                 microphoneComboBox.Items.Add($"{i} - {capabilities.ProductName}");
             }
+
             if (microphoneComboBox.Items.Count > 0)
                 microphoneComboBox.SelectedIndex = 0;
         }
@@ -60,6 +272,8 @@ namespace VirtualMicApp
             effectsComboBox.Items.Add("Echo");
             effectsComboBox.Items.Add("Reverb");
             effectsComboBox.Items.Add("Low Quality Mic");
+            effectsComboBox.Items.Add("Saturation");
+            effectsComboBox.Items.Add("Tremolo");
             effectsComboBox.SelectedIndex = 0;
         }
 
@@ -94,7 +308,7 @@ namespace VirtualMicApp
 
                 capture.DataAvailable += (s, a) =>
                 {
-                    if (bufferedWaveProvider != null && 
+                    if (bufferedWaveProvider != null &&
                         bufferedWaveProvider.BufferedBytes < bufferedWaveProvider.BufferLength - a.BytesRecorded)
                     {
                         bufferedWaveProvider.AddSamples(a.Buffer, 0, a.BytesRecorded);
@@ -131,7 +345,7 @@ namespace VirtualMicApp
 
                     microphoneInput.DataAvailable += (s, a) =>
                     {
-                        if (microphoneBuffer != null && 
+                        if (microphoneBuffer != null &&
                             microphoneBuffer.BufferedBytes < microphoneBuffer.BufferLength - a.BytesRecorded)
                         {
                             microphoneBuffer.AddSamples(a.Buffer, 0, a.BytesRecorded);
@@ -173,6 +387,13 @@ namespace VirtualMicApp
                                 NoiseLevel = (float)effectParam2.Value * 0.1f
                             };
                             break;
+                        case "Saturation":
+                            finalOutput = new SaturationEffect(mixer, (float)effectParam1.Value * 10);
+                            break;
+
+                        case "Tremolo":
+                            finalOutput = new TremoloEffect(mixer, (float)effectParam1.Value * 10);
+                            break;
                     }
                 }
 
@@ -185,7 +406,8 @@ namespace VirtualMicApp
                     waveOutToVirtualDevice = new WaveOutEvent { DeviceNumber = vbCableDeviceNumber };
                     waveOutToVirtualDevice.Init(vbCableOutput);
                     waveOutToVirtualDevice.Play();
-                    Dispatcher.Invoke(() => debugOutput.Text = $"Started VB-Cable output on device {vbCableDeviceNumber}");
+                    Dispatcher.Invoke(() =>
+                        debugOutput.Text = $"Started VB-Cable output on device {vbCableDeviceNumber}");
                 }
                 else
                 {
@@ -195,9 +417,9 @@ namespace VirtualMicApp
 
                 if (playbackCheckBox.IsChecked ?? false)
                 {
-                    try 
+                    try
                     {
-                        waveOutToSpeakers = new WaveOutEvent { DeviceNumber = -1 }; // -1 for default output device
+                        waveOutToSpeakers = new WaveOutEvent { DeviceNumber = -1 };
                         waveOutToSpeakers.Init(speakerOutput);
                         waveOutToSpeakers.Play();
                         Dispatcher.Invoke(() => debugOutput.Text += "\nStarted speaker output");
@@ -222,7 +444,7 @@ namespace VirtualMicApp
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An error occurred while starting: {ex.Message}. Please inform koslz at: @iakzs:matrix.org");
+                MessageBox.Show($"An error occurred while starting: {ex.Message}. Please inform k_z. in discord.");
                 StopAndCleanup();
             }
         }
@@ -417,6 +639,7 @@ namespace VirtualMicApp
                 {
                     sample = lastSample;
                 }
+
                 lastSample = sample;
 
                 sample = Math.Clamp(sample * 1.2f, -1f, 1f);
@@ -424,6 +647,103 @@ namespace VirtualMicApp
             }
 
             return samplesRead;
+        }
+    }
+
+    public class SaturationEffect : ISampleProvider
+    {
+        private readonly ISampleProvider _source;
+        private readonly float _saturationLevel;
+
+        public SaturationEffect(ISampleProvider source, float saturationLevel = 5.0f)
+        {
+            _source = source;
+            _saturationLevel = saturationLevel;
+            WaveFormat = source.WaveFormat;
+        }
+
+        public WaveFormat WaveFormat { get; }
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            int read = _source.Read(buffer, offset, count);
+            for (int i = 0; i < read; i++)
+            {
+                buffer[i + offset] *= _saturationLevel;
+                buffer[i + offset] = Math.Clamp(buffer[i + offset], -1.0f, 1.0f);
+            }
+
+            return read;
+        }
+    }
+
+    public class ReverbEffect : ISampleProvider
+    {
+        private readonly ISampleProvider _source;
+        private readonly float[] _delayBuffer;
+        private int _bufferIndex;
+
+        public float ReverbMix { get; set; } = 0.5f;
+
+        public ReverbEffect(ISampleProvider source, float delaySec = 0.4f, float mix = 0.5f)
+        {
+            _source = source;
+            WaveFormat = source.WaveFormat;
+
+            int bufferSize = (int)(source.WaveFormat.SampleRate * delaySec * source.WaveFormat.Channels);
+            _delayBuffer = new float[bufferSize];
+            ReverbMix = mix;
+        }
+
+        public WaveFormat WaveFormat { get; }
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            int read = _source.Read(buffer, offset, count);
+            for (int i = 0; i < read; i++)
+            {
+                int delayBufferIndex = (_bufferIndex + i) % _delayBuffer.Length;
+
+                float delayedSample = _delayBuffer[delayBufferIndex];
+                float inputSample = buffer[i + offset];
+
+                buffer[i + offset] = inputSample * (1 - ReverbMix) + delayedSample * ReverbMix;
+                _delayBuffer[delayBufferIndex] = inputSample;
+            }
+
+            _bufferIndex += read;
+            return read;
+        }
+    }
+
+    public class TremoloEffect : ISampleProvider
+    {
+        private readonly ISampleProvider _source;
+        private readonly float _frequency;
+        private int _sampleCounter;
+
+        public TremoloEffect(ISampleProvider source, float frequency = 5.0f)
+        {
+            _source = source;
+            _frequency = frequency;
+            WaveFormat = source.WaveFormat;
+        }
+
+        public WaveFormat WaveFormat { get; }
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            int read = _source.Read(buffer, offset, count);
+
+            for (int i = 0; i < read; i++)
+            {
+                double modulation =
+                    0.5 * (1.0 + Math.Sin(2 * Math.PI * _frequency * _sampleCounter / WaveFormat.SampleRate));
+                buffer[i + offset] *= (float)modulation;
+                _sampleCounter++;
+            }
+
+            return read;
         }
     }
 
